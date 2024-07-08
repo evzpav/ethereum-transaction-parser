@@ -93,12 +93,7 @@ func (a *api) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type SubscribeRequest struct {
-		Address string `json:"address"`
-	}
-
-	var sub SubscribeRequest
-
+	var sub models.SubscribeRequest
 	err = json.Unmarshal(bs, &sub)
 	if err != nil {
 		http.Error(w, "error unmarshaling request body", http.StatusInternalServerError)
@@ -107,6 +102,11 @@ func (a *api) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	if sub.Address == "" {
 		http.Error(w, "address query param is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := sub.Validate(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

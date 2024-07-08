@@ -58,26 +58,37 @@ func (p *parser) ParseBlockTransactions() {
 }
 
 func (p *parser) parseTransactionsPerBlock() {
+
 	fmt.Println("Parsing...")
 
-	lastestBlock, err := p.getETHLatestBlock()
-	if err != nil {
-		log.Printf("error getting latest block number: %v", err)
-		time.Sleep(p.retryDelay)
-		return
+	maxRetry := 5
+
+	retryLatest := 0
+
+	latestBlock := big.NewInt(0)
+	for retryLatest < maxRetry {
+		var err error
+		latestBlock, err = p.getETHLatestBlock()
+		if err != nil {
+			log.Printf("error getting latest block number: %v", err)
+			time.Sleep(p.retryDelay)
+			retryLatest++
+			continue
+		}
+		retryLatest = maxRetry
 	}
 
 	current := big.NewInt(int64(p.GetCurrentBlock()))
 	if current.Cmp(big.NewInt(0)) == 0 {
-		current = new(big.Int).Sub(lastestBlock, big.NewInt(10))
+		current = new(big.Int).Sub(latestBlock, big.NewInt(10))
 	}
 
-	if current.Cmp(lastestBlock) >= 0 {
+	if current.Cmp(latestBlock) >= 0 {
 		return
 	}
 
 	fmt.Println("Current block: ", current.String())
-	fmt.Println("Lastest block: ", lastestBlock.String())
+	fmt.Println("Lastest block: ", latestBlock.String())
 
 	addressMap := p.GetSubscriptions()
 
@@ -86,13 +97,21 @@ func (p *parser) parseTransactionsPerBlock() {
 		return
 	}
 
-	for current.Cmp(lastestBlock) <= 0 {
+	for current.Cmp(latestBlock) <= 0 {
 
-		block, err := p.getETHBlockByNumber(current)
-		if err != nil {
-			log.Printf("error getting block: %v\n", err)
-			time.Sleep(p.retryDelay)
-			continue
+		retryCurrent := 0
+		var block *models.Block
+
+		for retryCurrent < maxRetry {
+			var err error
+			block, err = p.getETHBlockByNumber(current)
+			if err != nil {
+				log.Printf("error getting block: %v\n", err)
+				time.Sleep(p.retryDelay)
+				retryCurrent++
+				continue
+			}
+			retryCurrent = maxRetry
 		}
 
 		for _, tx := range block.Transactions {

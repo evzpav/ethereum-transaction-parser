@@ -1,6 +1,11 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"regexp"
+)
+var ethAddressRegex = regexp.MustCompile(`^0x[a-fA-F0-9]{40}$`)
 
 type Parser interface {
 	// last parsed block
@@ -75,4 +80,25 @@ type SubscriptionResponse struct {
 type SubscriptionParams struct {
 	Subscription string          `json:"subscription"`
 	Result       json.RawMessage `json:"result"`
+}
+
+type SubscribeRequest struct {
+	Address string `json:"address"`
+}
+
+
+func (sr *SubscribeRequest) Validate( ) error {
+
+	if sr.Address == "" || !validateEthereumAddress(sr.Address) {
+		return fmt.Errorf("address is invalid")
+	}
+
+	return nil
+
+} 
+
+
+
+func validateEthereumAddress(address string) bool {
+    return ethAddressRegex.MatchString(address)
 }
